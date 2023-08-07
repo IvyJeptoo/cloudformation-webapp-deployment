@@ -2,19 +2,62 @@ AWSTemplateFormatVersion: '2010-09-09'
 Description: Udagram CloudFormation Stack
 
 Parameters:
-  VpcId:
+  EnvironmentName:
+      Description: An environment name that will be prefixed to resource names
+      Type: String
+  VpcCIDR:
     Type: String
     Description: IP range for the VPC 
 
-  PublicSubnetCIDR:
-    Type: String
-    Description: IP range for the public subnet 
+  PublicSubnet1CIDR:
+        Description: Please enter the IP range (CIDR notation) for the public subnet in the first Availability Zone
+        Type: String
+        Default: 10.0.0.0/24
 
-  PrivateSubnetCIDR:
-    Type: String
-    Description: IP range for the private subnet
+  PublicSubnet2CIDR:
+        Description: Please enter the IP range (CIDR notation) for the public subnet in the second Availability Zone
+        Type: String
+        Default: 10.0.1.0/24
+
+  PrivateSubnet1CIDR:
+        Description: Please enter the IP range (CIDR notation) for the private subnet in the first Availability Zone
+        Type: String
+        Default: 10.0.2.0/24
+
+  PrivateSubnet2CIDR:
+        Description: Please enter the IP range (CIDR notation) for the private subnet in the second Availability Zone
+        Type: String
+        Default: 10.0.3.0/24
 
 Resources:
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCIDR
+
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !Ref PublicSubnet1CIDR
+
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !Ref PublicSubnet2CIDR
+
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !Ref PrivateSubnet1CIDR
+
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !Ref PrivateSubnet2CIDR
   # IAM Role to allow EC2 instances to access S3 bucket
 
   EC2Role:
@@ -38,14 +81,17 @@ Resources:
               - Effect: Allow
                 Action: 
                  - s3:GetObject
-                Resource: arn:aws:s3:::ivy-udagram-bucket
+                 - s3:ListBucket
+                Resource: 
+                 - arn:aws:s3:::ivy-udagram-bucket
+                 - arn:aws:s3:::ivy-udagram-bucket/*
 
   # Security Group for EC2 instances
   InstanceSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: Security Group for EC2 instances
-      VpcId: !Ref VpcId
+      VpcId: !Ref VPC
       SecurityGroupIngress:
         - CidrIp: 0.0.0.0/0
           IpProtocol: tcp
@@ -54,12 +100,14 @@ Resources:
       SecurityGroupEgress:
         - CidrIp: 0.0.0.0/0
           IpProtocol: tcp
+          FromPort: 0
+          ToPort: 65535
 
   LoadBalancerSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: Security Group for the Load Balancer
-      VpcId: !Ref VpcId
+      VpcId: !Ref VPC
       SecurityGroupIngress:
         - CidrIp: 0.0.0.0/0
           IpProtocol: tcp
@@ -71,7 +119,7 @@ Resources:
           FromPort: 80
           ToPort: 80
   
-   LaunchConfiguration:
+  LaunchConfiguration:
     Type: AWS::AutoScaling::LaunchConfiguration
     Properties:
       ImageId: ami-047a51fa27710816e
